@@ -1,0 +1,10 @@
+key_1:
+- item_1
+- item_2
+- item_3
+key_2: 4
+key_3:
+  item_1: 20€
+  item_2: 5€
+  item_3: 7€
+  item_4: 10€
