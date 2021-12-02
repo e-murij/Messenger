@@ -3,6 +3,9 @@
 import socket
 import sys
 import json
+import logging
+import Messenger.log.server_log_config
+from Messenger.errors import ReqFieldMissingError, IncorrectDataRecivedError
 from common.variables import ACTION, ACCOUNT_NAME, RESPONSE, MAX_CONNECTIONS, \
     PRESENCE, TIME, USER, ERROR, DEFAULT_PORT, RESPONDEFAULT_IP_ADDRESSSE
 from common.utils import get_message, send_message
@@ -10,6 +13,7 @@ from common.utils import get_message, send_message
 
 class Server:
     def __init__(self, params=[]):
+        self.SERVER_LOGGER = logging.getLogger('server')
         self.init_params(params)
 
     def init_params(self, params):
@@ -19,13 +23,12 @@ class Server:
             else:
                 self.listen_port = DEFAULT_PORT
             if self.listen_port < 1024 or self.listen_port > 65535:
-                raise ValueError
+                self.SERVER_LOGGER.critical(f'Попытка запуска сервера с указанием недопустимого порта'
+                                            f'{self.listen_port} Допустимы адреса с 1024 до 65535. Сервер завершает работу.')
+                sys.exit(1)
         except IndexError:
-            print('После параметра -\'p\' необходимо указать номер порта.')
-            sys.exit(1)
-        except ValueError:
-            print(
-                'В качастве порта может быть указано только число в диапазоне от 1024 до 65535.')
+            self.SERVER_LOGGER.critical(
+                f'После параметра -\'p\' необходимо указать номер порта.Сервер завершает работу.')
             sys.exit(1)
 
         try:
@@ -33,10 +36,9 @@ class Server:
                 self.listen_address = params[params.index('-a') + 1]
             else:
                 self.listen_address = ''
-
         except IndexError:
-            print(
-                'После параметра \'a\'- необходимо указать адрес, который будет слушать сервер.')
+            self.SERVER_LOGGER.critical(
+                f'После параметра -\'a\' необходимо указать номер порта.Сервер завершает работу.')
             sys.exit(1)
 
     def init_sock(self):
@@ -46,16 +48,27 @@ class Server:
     def server_running(self):
         self.init_sock()
         self.transport.listen(MAX_CONNECTIONS)
+        self.SERVER_LOGGER.info(f'Запущен сервер, порт для подключений: {self.listen_port}, '
+                                f'адрес с которого принимаются подключения: {self.listen_address}. '
+                                f'Если адрес не указан, принимаются соединения с любых адресов.')
         while True:
             client, client_address = self.transport.accept()
+            self.SERVER_LOGGER.info(f'Установлено соедение с {client_address}')
             try:
                 message_from_client = get_message(client)
-                print(message_from_client)
+                self.SERVER_LOGGER.debug(f'Получено сообщение {message_from_client}')
                 response = self.process_client_message(message_from_client)
+                self.SERVER_LOGGER.info(f'Сформирован ответ клиенту {response}')
                 send_message(client, response)
+                self.SERVER_LOGGER.debug(f'Соединение с клиентом {client_address} закрывается.')
                 client.close()
-            except (ValueError, json.JSONDecodeError):
-                print('Принято некорретное сообщение от клиента.')
+            except json.JSONDecodeError:
+                self.SERVER_LOGGER.error(f'Не удалось декодировать Json строку, полученную от '
+                                         f'клиента {client_address}. Соединение закрывается.')
+                client.close()
+            except IncorrectDataRecivedError:
+                self.SERVER_LOGGER.error(f'От клиента {client_address} приняты некорректные данные. '
+                                         f'Соединение закрывается.')
                 client.close()
 
     def process_client_message(self, message):
@@ -67,6 +80,7 @@ class Server:
         :param message:
         :return:
         '''
+        self.SERVER_LOGGER.debug(f'Разбор сообщения от клиента : {message}')
         if ACTION in message and message[ACTION] == PRESENCE and TIME in message \
                 and USER in message and message[USER][ACCOUNT_NAME] == 'Guest':
             return {RESPONSE: 200}
