@@ -1,10 +1,10 @@
 """Программа-сервер"""
-
 import socket
 import sys
 import json
 import logging
 import Messenger.log.server_log_config
+from Messenger.decorators import Log
 from Messenger.errors import ReqFieldMissingError, IncorrectDataRecivedError
 from common.variables import ACTION, ACCOUNT_NAME, RESPONSE, MAX_CONNECTIONS, \
     PRESENCE, TIME, USER, ERROR, DEFAULT_PORT, RESPONDEFAULT_IP_ADDRESSSE
@@ -16,6 +16,7 @@ class Server:
         self.SERVER_LOGGER = logging.getLogger('server')
         self.init_params(params)
 
+    @Log()
     def init_params(self, params):
         try:
             if '-p' in params:
@@ -41,10 +42,12 @@ class Server:
                 f'После параметра -\'a\' необходимо указать номер порта.Сервер завершает работу.')
             sys.exit(1)
 
+    @Log()
     def init_sock(self):
         self.transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.transport.bind((self.listen_address, self.listen_port))
 
+    @Log()
     def server_running(self):
         self.init_sock()
         self.transport.listen(MAX_CONNECTIONS)
@@ -71,6 +74,7 @@ class Server:
                                          f'Соединение закрывается.')
                 client.close()
 
+    @Log()
     def process_client_message(self, message):
         '''
         Обработчик сообщений от клиентов, принимает словарь -

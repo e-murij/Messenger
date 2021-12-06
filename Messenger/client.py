@@ -5,7 +5,8 @@ import json
 import socket
 import time
 import logging
-import Messenger.log .client_log_config
+import Messenger.log.client_log_config
+from Messenger.decorators import Log
 from Messenger.errors import ReqFieldMissingError
 from common.variables import ACTION, PRESENCE, TIME, USER, ACCOUNT_NAME, \
     RESPONSE, ERROR, DEFAULT_IP_ADDRESS, DEFAULT_PORT
@@ -14,9 +15,10 @@ from common.utils import get_message, send_message
 
 class Client:
     def __init__(self, params=[]):
-        self.init_params(params)
         self.CLIENT_LOGGER = logging.getLogger('client')
+        self.init_params(params)
 
+    @Log()
     def init_params(self, params):
         try:
             self.server_address = params[1]
@@ -30,10 +32,12 @@ class Client:
             self.server_address = DEFAULT_IP_ADDRESS
             self.server_port = DEFAULT_PORT
 
+    @Log()
     def init_sock(self):
         self.transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.transport.connect((self.server_address, self.server_port))
 
+    @Log()
     def client_running(self):
         try:
             self.init_sock()
@@ -45,11 +49,12 @@ class Client:
             self.CLIENT_LOGGER.error('Не удалось декодировать полученную Json строку.')
         except ConnectionRefusedError:
             self.CLIENT_LOGGER.critical(f'Не удалось подключиться к серверу {self.server_address}:{self.server_port}, '
-                                   f'конечный компьютер отверг запрос на подключение.')
+                                        f'конечный компьютер отверг запрос на подключение.')
         except ReqFieldMissingError as missing_error:
             self.CLIENT_LOGGER.error(f'В ответе сервера отсутствует необходимое поле '
-                                f'{missing_error.missing_field}')
+                                     f'{missing_error.missing_field}')
 
+    @Log()
     def create_presence(self, account_name='Guest'):
         '''
         Функция генерирует запрос о присутствии клиента
@@ -66,6 +71,7 @@ class Client:
         self.CLIENT_LOGGER.debug(f'Сформировано {PRESENCE} сообщение для пользователя {account_name}')
         return out
 
+    @Log()
     def process_ans(self, message):
         '''
         Функция разбирает ответ сервера
