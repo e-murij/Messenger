@@ -7,10 +7,10 @@ import logging
 import time
 
 import Messenger.log.server_log_config
-from Messenger.common.variables import MESSAGE, SENDER, MESSAGE_TEXT
+from Messenger.common.variables import ACTION, ACCOUNT_NAME, MAX_CONNECTIONS, \
+    PRESENCE, TIME, USER, ERROR, DEFAULT_PORT, MESSAGE, SENDER, MESSAGE_TEXT, DESTINATION, RESPONSE_200, RESPONSE_400, \
+    EXIT
 from Messenger.decorators import Log
-from common.variables import ACTION, ACCOUNT_NAME, RESPONSE, MAX_CONNECTIONS, \
-    PRESENCE, TIME, USER, ERROR, DEFAULT_PORT, RESPONDEFAULT_IP_ADDRESSSE
 from common.utils import get_message, send_message
 
 
@@ -50,6 +50,10 @@ class Server:
         # список клиентов , очередь сообщений
         clients = []
         messages = []
+
+        # Словарь, содержащий имена пользователей и их сокеты
+        names = dict()
+
         while True:
             # Ждём подключения, если таймаут вышел, ловим исключение.
             try:
@@ -75,57 +79,87 @@ class Server:
                 for client_with_message in recv_data_lst:
                     try:
                         self.process_client_message(get_message(client_with_message),
-                                                    messages, client_with_message)
+                                                    messages, client_with_message, clients, names)
                     except:
                         self.SERVER_LOGGER.info(f'Клиент {client_with_message.getpeername()} '
                                                 f'отключился от сервера.')
                         clients.remove(client_with_message)
 
-            # Если есть сообщения для отправки и ожидающие клиенты, отправляем им сообщение.
-            if messages and send_data_lst:
-                message = {
-                    ACTION: MESSAGE,
-                    SENDER: messages[0][0],
-                    TIME: time.time(),
-                    MESSAGE_TEXT: messages[0][1]
-                }
-                del messages[0]
-                for waiting_client in send_data_lst:
-                    try:
-                        send_message(waiting_client, message)
-                    except:
-                        self.SERVER_LOGGER.info(f'Клиент {waiting_client.getpeername()} отключился от сервера.')
-                        waiting_client.close()
-                        clients.remove(waiting_client)
+            # Если есть сообщения, обрабатываем каждое.
+            for mes in messages:
+                try:
+                    self.process_message(mes, names, send_data_lst)
+                except Exception:
+                    self.SERVER_LOGGER.info(f'Связь с клиентом с именем {i[DESTINATION]} была потеряна')
+                    clients.remove(names[mes[DESTINATION]])
+                    del names[mes[DESTINATION]]
+            messages.clear()
 
     @Log()
-    def process_client_message(self, message, messages_list, client):
+    def process_client_message(self, message, messages_list, client, clients, names):
         """
         Обработчик сообщений от клиентов, принимает словарь - сообщение от клинта,
         проверяет корректность, отправляет словарь-ответ для клиента с результатом приёма.
-        :param message:
+        ::param message:
         :param messages_list:
         :param client:
+        :param clients:
+        :param names:
         :return:
         """
         self.SERVER_LOGGER.debug(f'Разбор сообщения от клиента : {message}')
         # Если это сообщение о присутствии, принимаем и отвечаем, если успех
-        if ACTION in message and message[ACTION] == PRESENCE and TIME in message \
-                and USER in message and message[USER][ACCOUNT_NAME] == 'Guest':
-            send_message(client, {RESPONSE: 200})
+        if ACTION in message and message[ACTION] == PRESENCE and TIME in message and USER in message:
+            # Если такой пользователь ещё не зарегистрирован,
+            # регистрируем, иначе отправляем ответ и завершаем соединение.
+            if message[USER][ACCOUNT_NAME] not in names.keys():
+                names[message[USER][ACCOUNT_NAME]] = client
+                send_message(client, RESPONSE_200)
+            else:
+                response = RESPONSE_400
+                response[ERROR] = 'Имя пользователя уже занято'
+                send_message(client, RESPONSE_400)
+                clients.remove(client)
+                client.close()
             return
         # Если это сообщение, то добавляем его в очередь сообщений. Ответ не требуется.
         elif ACTION in message and message[ACTION] == MESSAGE and \
-                TIME in message and MESSAGE_TEXT in message:
-            messages_list.append((message[ACCOUNT_NAME], message[MESSAGE_TEXT]))
+                TIME in message and MESSAGE_TEXT in message and DESTINATION in message and SENDER in message:
+            messages_list.append(message)
+            return
+        # Если клиент выходит
+        elif ACTION in message and message[ACTION] == EXIT and ACCOUNT_NAME in message:
+            clients.remove(names[message[ACCOUNT_NAME]])
+            names[message[ACCOUNT_NAME]].close()
+            del names[message[ACCOUNT_NAME]]
             return
         # Иначе отдаём Bad request
         else:
-            send_message(client, {
-                RESPONSE: 400,
-                ERROR: 'Bad Request'
-            })
+            response = RESPONSE_400
+            response[ERROR] = 'Запрос некорректен.'
+            send_message(client, response)
             return
+
+    @Log()
+    def process_message(self, message, names, listen_socks):
+        """
+        Функция адресной отправки сообщения определённому клиенту. Принимает словарь сообщение,
+        список зарегистрированых пользователей и слушающие сокеты. Ничего не возвращает.
+        :param message:
+        :param names:
+        :param listen_socks:
+        :return:
+        """
+        if message[DESTINATION] in names and names[message[DESTINATION]] in listen_socks:
+            send_message(names[message[DESTINATION]], message)
+            self.SERVER_LOGGER.info(f'Отправлено сообщение пользователю {message[DESTINATION]} '
+                                    f'от пользователя {message[SENDER]}.')
+        elif message[DESTINATION] in names and names[message[DESTINATION]] not in listen_socks:
+            raise ConnectionError
+        else:
+            self.SERVER_LOGGER.error(
+                f'Пользователь {message[DESTINATION]} не зарегистрирован на сервере, '
+                f'отправка сообщения невозможна.')
 
 
 if __name__ == '__main__':
