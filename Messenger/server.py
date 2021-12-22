@@ -12,15 +12,18 @@ from Messenger.common.variables import ACTION, ACCOUNT_NAME, MAX_CONNECTIONS, \
     EXIT
 from Messenger.decorators import Log
 from common.utils import get_message, send_message
+from Messenger.descriptors import Port
+from Messenger.metaclasses import ServerMaker
 
 
-class Server:
+class Server(metaclass=ServerMaker):
+    listen_port = Port()
+
     def __init__(self):
         self.SERVER_LOGGER = logging.getLogger('server')
         self.listen_address, self.listen_port = self.arg_parser()
         self.transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    @Log()
     def arg_parser(self):
         """Парсер аргументов коммандной строки"""
         parser = argparse.ArgumentParser()
@@ -29,17 +32,8 @@ class Server:
         namespace = parser.parse_args(sys.argv[1:])
         listen_address = namespace.a
         listen_port = namespace.p
-
-        # проверка получения корретного номера порта для работы сервера.
-        if not 1023 < listen_port < 65536:
-            self.SERVER_LOGGER.critical(
-                f'Попытка запуска сервера с указанием неподходящего порта '
-                f'{listen_port}. Допустимы адреса с 1024 до 65535.')
-            sys.exit(1)
-
         return listen_address, listen_port
 
-    @Log()
     def server_running(self):
         self.transport.bind((self.listen_address, self.listen_port))
         self.transport.settimeout(1)
@@ -95,7 +89,6 @@ class Server:
                     del names[mes[DESTINATION]]
             messages.clear()
 
-    @Log()
     def process_client_message(self, message, messages_list, client, clients, names):
         """
         Обработчик сообщений от клиентов, принимает словарь - сообщение от клинта,
@@ -140,7 +133,6 @@ class Server:
             send_message(client, response)
             return
 
-    @Log()
     def process_message(self, message, names, listen_socks):
         """
         Функция адресной отправки сообщения определённому клиенту. Принимает словарь сообщение,

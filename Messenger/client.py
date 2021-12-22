@@ -11,7 +11,9 @@ from Messenger.decorators import Log
 from Messenger.errors import ReqFieldMissingError, ServerError, IncorrectDataRecivedError
 from Messenger.common.variables import ACTION, PRESENCE, TIME, USER, ACCOUNT_NAME, \
     RESPONSE, ERROR, DEFAULT_IP_ADDRESS, DEFAULT_PORT, MESSAGE, MESSAGE_TEXT, SENDER, DESTINATION, EXIT
-from common.utils import get_message, send_message
+from Messenger.common.utils import get_message, send_message
+from Messenger.descriptors import Port
+from Messenger.metaclasses import ClientMaker
 
 
 def print_help():
@@ -22,9 +24,8 @@ def print_help():
     print('exit - выход из программы')
 
 
-class UserInterfaceThread(threading.Thread):
-    """Класс поток взаимодействия с пользователем, запрашивает команды, отправляет сообщения"""
-
+# Класс поток взаимодействия с пользователем, запрашивает команды, отправляет сообщения
+class UserInterfaceThread(threading.Thread, metaclass=ClientMaker):
     def __init__(self, sock, username):
         super().__init__()
         self.CLIENT_LOGGER = logging.getLogger('client')
@@ -32,7 +33,6 @@ class UserInterfaceThread(threading.Thread):
         self.sock = sock
         self.username = username
 
-    @Log()
     def run(self):
         print_help()
         while True:
@@ -51,7 +51,6 @@ class UserInterfaceThread(threading.Thread):
             else:
                 print('Команда не распознана, попробойте снова. help - вывести поддерживаемые команды.')
 
-    @Log()
     def create_message(self):
         """
         Функция запрашивает кому отправить сообщение и само сообщение,
@@ -76,7 +75,6 @@ class UserInterfaceThread(threading.Thread):
             self.CLIENT_LOGGER.critical('Потеряно соединение с сервером.')
             sys.exit(1)
 
-    @Log()
     def create_exit_message(self):
         """Функция создаёт словарь с сообщением о выходе"""
         return {
@@ -86,9 +84,8 @@ class UserInterfaceThread(threading.Thread):
         }
 
 
-class ReceiverThread(threading.Thread):
-    """Класс поток - обработчик сообщений других пользователей, поступающих с сервера"""
-
+# Класс поток - обработчик сообщений других пользователей, поступающих с сервера
+class ReceiverThread(threading.Thread, metaclass=ClientMaker):
     def __init__(self, sock, username):
         super().__init__()
         self.CLIENT_LOGGER = logging.getLogger('client')
@@ -96,7 +93,6 @@ class ReceiverThread(threading.Thread):
         self.sock = sock
         self.username = username
 
-    @Log()
     def run(self):
         """Функция - обработчик сообщений других пользователей, поступающих с сервера"""
         while True:
@@ -120,6 +116,8 @@ class ReceiverThread(threading.Thread):
 
 
 class Client:
+    server_port = Port()
+
     def __init__(self):
         self.CLIENT_LOGGER = logging.getLogger('client')
         self.server_address, self.server_port, self.client_name = self.arg_parser()
@@ -138,13 +136,6 @@ class Client:
         server_address = namespace.addr
         server_port = namespace.port
         client_name = namespace.name
-
-        # проверим подходящий номер порта
-        if not 1023 < server_port < 65536:
-            self.CLIENT_LOGGER.critical(
-                f'Попытка запуска клиента с неподходящим номером порта: {server_port}. '
-                f'Допустимы адреса с 1024 до 65535. Клиент завершается.')
-            sys.exit(1)
 
         return server_address, server_port, client_name
 
