@@ -14,6 +14,7 @@ from Messenger.decorators import Log
 from common.utils import get_message, send_message
 from Messenger.descriptors import Port
 from Messenger.metaclasses import ServerMaker
+from Messenger.db_server import ServerStorage
 
 
 class Server(metaclass=ServerMaker):
@@ -23,6 +24,7 @@ class Server(metaclass=ServerMaker):
         self.SERVER_LOGGER = logging.getLogger('server')
         self.listen_address, self.listen_port = self.arg_parser()
         self.transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.database = ServerStorage()
 
     def arg_parser(self):
         """Парсер аргументов коммандной строки"""
@@ -107,6 +109,8 @@ class Server(metaclass=ServerMaker):
             # регистрируем, иначе отправляем ответ и завершаем соединение.
             if message[USER][ACCOUNT_NAME] not in names.keys():
                 names[message[USER][ACCOUNT_NAME]] = client
+                client_ip, client_port = client.getpeername()
+                self.database.user_login(message[USER][ACCOUNT_NAME], client_ip, client_port)
                 send_message(client, RESPONSE_200)
             else:
                 response = RESPONSE_400
@@ -122,6 +126,7 @@ class Server(metaclass=ServerMaker):
             return
         # Если клиент выходит
         elif ACTION in message and message[ACTION] == EXIT and ACCOUNT_NAME in message:
+            self.database.user_logout(message[ACCOUNT_NAME])
             clients.remove(names[message[ACCOUNT_NAME]])
             names[message[ACCOUNT_NAME]].close()
             del names[message[ACCOUNT_NAME]]
