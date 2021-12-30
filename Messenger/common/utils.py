@@ -6,7 +6,6 @@ from Messenger.decorators import Log
 from common.variables import MAX_PACKAGE_LENGTH, ENCODING
 
 
-@Log()
 def get_message(client):
     '''
     Утилита приёма и декодирования сообщения
@@ -25,7 +24,6 @@ def get_message(client):
     raise ValueError
 
 
-@Log()
 def send_message(sock, message):
     '''
     Утилита кодирования и отправки сообщения
