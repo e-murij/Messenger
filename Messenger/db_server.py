@@ -208,10 +208,10 @@ class ServerStorage:
             return
 
         # Удаляем требуемое
-        print(self.session.query(self.UsersContacts).filter(
+        self.session.query(self.UsersContacts).filter(
             self.UsersContacts.user == user.id,
             self.UsersContacts.contact == contact.id
-        ).delete())
+        ).delete()
         self.session.commit()
 
     # Функция возвращает список известных пользователей со временем последнего входа.
@@ -281,4 +281,3 @@ if __name__ == '__main__':
     test_db.remove_contact('test1', 'test3')
     test_db.process_message('client_1', 'client_2')
     print(test_db.message_history())
-

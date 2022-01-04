@@ -2,7 +2,6 @@
 
 import json
 
-from Messenger.decorators import Log
 from common.variables import MAX_PACKAGE_LENGTH, ENCODING
 
 

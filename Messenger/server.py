@@ -4,13 +4,9 @@ import os
 import select
 import socket
 import sys
-import logging
 import threading
-import time
 
-import Messenger.log.server_log_config
 from Messenger.common.variables import *
-from Messenger.decorators import Log
 from common.utils import get_message, send_message
 from Messenger.descriptors import Port
 from Messenger.metaclasses import ServerMaker
@@ -18,7 +14,6 @@ from Messenger.db_server import ServerStorage
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import QTimer
 from Messenger.server_gui import MainWindow, gui_create_model, HistoryWindow, create_stat_model, ConfigWindow
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
 import configparser
 
 # Флаг, что был подключён новый пользователь, нужен чтобы не мучать BD
@@ -60,10 +55,11 @@ class Server(threading.Thread, metaclass=ServerMaker):
         return listen_address, listen_port
 
     def run(self):
+        global new_connection
         self.transport.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.transport.bind((self.listen_address, self.listen_port))
         self.transport.settimeout(0.5)
-        self.transport.listen(MAX_CONNECTIONS)
+        self.transport.listen()
         self.SERVER_LOGGER.info(f'Запущен сервер, порт для подключений: {self.listen_port}, '
                                 f'адрес с которого принимаются подключения: {self.listen_address}. '
                                 f'Если адрес не указан, принимаются соединения с любых адресов.')
@@ -102,6 +98,8 @@ class Server(threading.Thread, metaclass=ServerMaker):
                                 del self.names[name]
                                 break
                         self.clients.remove(client_with_message)
+                        with conflag_lock:
+                            new_connection = True
 
             # Если есть сообщения, обрабатываем каждое.
             for mes in self.messages:
@@ -112,6 +110,8 @@ class Server(threading.Thread, metaclass=ServerMaker):
                     self.clients.remove(self.names[mes[DESTINATION]])
                     self.database.user_logout(mes[DESTINATION])
                     del self.names[mes[DESTINATION]]
+                    with conflag_lock:
+                        new_connection = True
             self.messages.clear()
 
     def process_client_message(self, message, client):
@@ -140,10 +140,16 @@ class Server(threading.Thread, metaclass=ServerMaker):
                 client.close()
             return
         # Если это сообщение, то добавляем его в очередь сообщений. Ответ не требуется.
-        elif ACTION in message and message[ACTION] == MESSAGE and TIME in message and MESSAGE_TEXT in message \
-                and DESTINATION in message and SENDER in message and self.names[message[SENDER]] == client:
-            self.messages.append(message)
-            self.database.process_message(message[SENDER], message[DESTINATION])
+        elif ACTION in message and message[ACTION] == MESSAGE and DESTINATION in message and TIME in message \
+                and SENDER in message and MESSAGE_TEXT in message and self.names[message[SENDER]] == client:
+            if message[DESTINATION] in self.names:
+                self.messages.append(message)
+                self.database.process_message(message[SENDER], message[DESTINATION])
+                send_message(client, RESPONSE_200)
+            else:
+                response = RESPONSE_400
+                response[ERROR] = 'Пользователь не зарегистрирован на сервере.'
+                send_message(client, response)
             return
         # Если клиент выходит
         elif ACTION in message and message[ACTION] == EXIT and ACCOUNT_NAME in message \
@@ -266,7 +272,6 @@ def main():
             config['SETTINGS']['Listen_Address'] = config_window.ip.text()
             if 1023 < port < 65536:
                 config['SETTINGS']['Default_port'] = str(port)
-                print(port)
                 with open('server.ini', 'w') as conf:
                     config.write(conf)
                     message.information(
