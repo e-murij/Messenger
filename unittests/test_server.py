@@ -1,9 +1,9 @@
 """Unit-тесты сервера"""
 
 import unittest
-from Messenger.common.variables import RESPONSE, ERROR, USER, ACCOUNT_NAME, TIME, ACTION, PRESENCE, \
+from common.variables import RESPONSE, ERROR, USER, ACCOUNT_NAME, TIME, ACTION, PRESENCE, \
     RESPONDEFAULT_IP_ADDRESSSE
-from Messenger.server import Server
+from server import Server
 
 
 class TestServer(unittest.TestCase):

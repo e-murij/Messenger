@@ -6,14 +6,14 @@ import socket
 import sys
 import threading
 
-from Messenger.common.variables import *
+from common.variables import *
 from common.utils import get_message, send_message
-from Messenger.descriptors import Port
-from Messenger.metaclasses import ServerMaker
-from Messenger.db_server import ServerStorage
+from descriptors import Port
+from metaclasses import ServerMaker
+from db_server import ServerStorage
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import QTimer
-from Messenger.server_gui import MainWindow, gui_create_model, HistoryWindow, create_stat_model, ConfigWindow
+from server_gui import MainWindow, gui_create_model, HistoryWindow, create_stat_model, ConfigWindow
 import configparser
 
 # Флаг, что был подключён новый пользователь, нужен чтобы не мучать BD

@@ -4,13 +4,13 @@ import argparse
 import sys
 from PyQt5.QtWidgets import QApplication
 
-from Messenger.common.variables import *
-from Messenger.common.errors import ServerError
-from Messenger.common.decorators import Log
-from Messenger.client.db_client import ClientStorage
-from Messenger.client.transport import ClientTransport
-from Messenger.client.main_window import ClientMainWindow
-from Messenger.client.start_dialog import UserNameDialog
+from common.variables import *
+from common.errors import ServerError
+from common.decorators import Log
+from client.db_client import ClientStorage
+from client.transport import ClientTransport
+from client.main_window import ClientMainWindow
+from client.start_dialog import UserNameDialog
 
 
 CLIENT_LOGGER = logging.getLogger('client')

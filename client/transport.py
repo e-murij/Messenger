@@ -5,9 +5,10 @@ import socket
 import threading
 import time
 from PyQt5.QtCore import pyqtSignal, QObject
-from Messenger.common.utils import *
-from Messenger.common.variables import *
-from Messenger.common.errors import ServerError
+sys.path.append('../')
+from common.utils import *
+from common.variables import *
+from common.errors import ServerError
 
 
 # Логер и объект блокировки для работы с сокетом.

@@ -4,23 +4,23 @@ import sys
 import os
 import logging
 import logging.handlers
-from Messenger.common.variables import LOGGING_LEVEL
+from common.variables import LOGGING_LEVEL
 
 
-LOGGER = logging.getLogger('client')
+LOGGER = logging.getLogger('server')
 
 # файл для логирования
 PATH = os.path.dirname(os.path.abspath(__file__))
-PATH = os.path.join(PATH, 'client.log')
+PATH = os.path.join(PATH, 'server.log')
 
-CLIENT_FORMATTER = logging.Formatter('%(asctime)s %(levelname)-8s %(filename)s %(message)s')
+SERVER_FORMATTER = logging.Formatter('%(asctime)s %(levelname)-8s %(filename)s %(message)s')
 
 STREAM_HANDLER = logging.StreamHandler(sys.stderr)
-STREAM_HANDLER.setFormatter(CLIENT_FORMATTER)
+STREAM_HANDLER.setFormatter(SERVER_FORMATTER)
 STREAM_HANDLER.setLevel(logging.ERROR)
 
-LOG_FILE_HANDLER = logging.FileHandler(PATH, encoding='utf-8')
-LOG_FILE_HANDLER.setFormatter(CLIENT_FORMATTER)
+LOG_FILE_HANDLER = logging.handlers.TimedRotatingFileHandler(PATH, encoding='utf8', interval=1, when='D')
+LOG_FILE_HANDLER.setFormatter(SERVER_FORMATTER)
 
 LOGGER.addHandler(STREAM_HANDLER)
 LOGGER.addHandler(LOG_FILE_HANDLER)

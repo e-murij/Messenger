@@ -2,7 +2,7 @@ from sqlalchemy import create_engine, Column, Integer, String, MetaData, Foreign
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import datetime
-from Messenger.common.variables import SERVER_DATABASE
+from common.variables import SERVER_DATABASE
 
 
 # Класс - серверная база данных:

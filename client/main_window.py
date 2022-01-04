@@ -4,13 +4,14 @@ from PyQt5.QtCore import pyqtSlot, QEvent, Qt
 import sys
 import json
 import logging
-from Messenger.client.main_window_conv import Ui_MainClientWindow
-from Messenger.client.add_contact import AddContactDialog
-from Messenger.client.del_contact import DelContactDialog
-from Messenger.client.db_client import ClientStorage
-from Messenger.client.transport import ClientTransport
-from Messenger.client.start_dialog import UserNameDialog
-from Messenger.common.errors import ServerError
+sys.path.append('../')
+from client.main_window_conv import Ui_MainClientWindow
+from client.add_contact import AddContactDialog
+from client.del_contact import DelContactDialog
+from client.db_client import ClientStorage
+from client.transport import ClientTransport
+from client.start_dialog import UserNameDialog
+from common.errors import ServerError
 
 logger = logging.getLogger('client')
 
@@ -255,9 +256,9 @@ class ClientMainWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    from Messenger.client.db_client import ClientStorage
+    from client.db_client import ClientStorage
     database = ClientStorage('test1')
-    from Messenger.client.transport import ClientTransport
+    from client.transport import ClientTransport
     transport = ClientTransport(7777, '127.0.0.1', database, 'test1')
     window = ClientMainWindow(database, transport)
     sys.exit(app.exec_())

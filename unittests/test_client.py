@@ -1,8 +1,8 @@
 """Unit-тесты клиента"""
 
 import unittest
-from Messenger.common.variables import RESPONSE, ERROR, USER, ACCOUNT_NAME, TIME, ACTION, PRESENCE
-from Messenger.client import Client
+from common.variables import RESPONSE, ERROR, USER, ACCOUNT_NAME, TIME, ACTION, PRESENCE
+from client import Client
 
 
 class TestClient(unittest.TestCase):
