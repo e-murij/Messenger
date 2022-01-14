@@ -2,7 +2,6 @@ from sqlalchemy import create_engine, Column, Integer, String, MetaData, Foreign
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import datetime
-from common.variables import SERVER_DATABASE
 
 
 # Класс - серверная база данных:
@@ -15,10 +14,12 @@ class ServerStorage:
         id = Column(Integer, primary_key=True)
         name = Column(String, unique=True)
         last_login = Column(DateTime)
+        passwd_hash = Column(String)
 
-        def __init__(self, username):
+        def __init__(self, username, passwd_hash):
             self.name = username
             self.last_login = datetime.datetime.now()
+            self.passwd_hash = passwd_hash
             self.id = None
 
         def __repr__(self):
@@ -124,11 +125,7 @@ class ServerStorage:
             user.last_login = datetime.datetime.now()
         # Если нет, то создаём нового пользователя
         else:
-            user = self.AllUsers(username)
-            self.session.add(user)
-            self.session.commit()
-            user_in_history = self.UsersHistory(user.id)
-            self.session.add(user_in_history)
+            raise ValueError('Пользователь не зарегистрирован.')
 
         new_active_user = self.ActiveUsers(user.id, ip_address, port, datetime.datetime.now())
         self.session.add(new_active_user)
@@ -137,6 +134,43 @@ class ServerStorage:
         self.session.add(history)
 
         self.session.commit()
+
+    def add_user(self, name, passwd_hash):
+        '''
+        Метод регистрации пользователя.
+        Принимает имя и хэш пароля, создаёт запись в таблице статистики.
+        '''
+        user_row = self.AllUsers(name, passwd_hash)
+        self.session.add(user_row)
+        self.session.commit()
+        history_row = self.UsersHistory(user_row.id)
+        self.session.add(history_row)
+        self.session.commit()
+
+    def remove_user(self, name):
+        '''Метод удаляющий пользователя из базы.'''
+        user = self.session.query(self.AllUsers).filter_by(name=name).first()
+        self.session.query(self.ActiveUsers).filter_by(user=user.id).delete()
+        self.session.query(self.LoginHistory).filter_by(name=user.id).delete()
+        self.session.query(self.UsersContacts).filter_by(user=user.id).delete()
+        self.session.query(
+            self.UsersContacts).filter_by(
+            contact=user.id).delete()
+        self.session.query(self.UsersHistory).filter_by(user=user.id).delete()
+        self.session.query(self.AllUsers).filter_by(name=name).delete()
+        self.session.commit()
+
+    def get_hash(self, name):
+        '''Метод получения хэша пароля пользователя.'''
+        user = self.session.query(self.AllUsers).filter_by(name=name).first()
+        return user.passwd_hash
+
+    def check_user(self, name):
+        '''Метод проверяющий существование пользователя.'''
+        if self.session.query(self.AllUsers).filter_by(name=name).count():
+            return True
+        else:
+            return False
 
     # Функция, выполняющаяся при отключении пользователя. Пользователь удаляется из таблицы Active_users
     def user_logout(self, username):
@@ -214,24 +248,6 @@ class ServerStorage:
         ).delete()
         self.session.commit()
 
-    # Функция возвращает список известных пользователей со временем последнего входа.
-    def users_list(self):
-        query = self.session.query(
-            self.AllUsers.name,
-            self.AllUsers.last_login
-        )
-        return query.all()
-
-    # Функция возвращает список активных пользователей
-    def active_users_list(self):
-        query = self.session.query(
-            self.AllUsers.name,
-            self.ActiveUsers.ip_address,
-            self.ActiveUsers.port,
-            self.ActiveUsers.login_time
-        ).join(self.AllUsers)
-        return query.all()
-
     # Функция возвращает количество переданных и полученных сообщений
     def message_history(self):
         query = self.session.query(
@@ -252,7 +268,7 @@ class ServerStorage:
 
 
 if __name__ == '__main__':
-    test_db = ServerStorage('server_base.db3')
+    test_db = ServerStorage('../server_base.db3')
     # Выполняем "подключение" пользователя
     test_db.user_login('client_1', '192.168.1.4', 8080)
     test_db.user_login('client_2', '192.168.1.5', 7777)

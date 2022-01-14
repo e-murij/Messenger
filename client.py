@@ -23,33 +23,36 @@ def arg_parser():
     parser.add_argument('addr', default=DEFAULT_IP_ADDRESS, nargs='?')
     parser.add_argument('port', default=DEFAULT_PORT, type=int, nargs='?')
     parser.add_argument('-n', '--name', default=None, nargs='?')
+    parser.add_argument('-p', '--password', default='', nargs='?')
     namespace = parser.parse_args(sys.argv[1:])
     server_address = namespace.addr
     server_port = namespace.port
     client_name = namespace.name
+    client_passwd = namespace.password
 
     if not 1023 < server_port < 65536:
         CLIENT_LOGGER.critical(
             f'Попытка запуска клиента с неподходящим номером порта: {server_port}. Допустимы адреса с 1024 до 65535. Клиент завершается.')
         exit(1)
 
-    return server_address, server_port, client_name
+    return server_address, server_port, client_name, client_passwd
 
 
 # Основная функция клиента
 if __name__ == '__main__':
     # Загружаем параметы коммандной строки
-    server_address, server_port, client_name = arg_parser()
+    server_address, server_port, client_name, client_passwd = arg_parser()
 
     # Создаём клиентсокое приложение
     client_app = QApplication(sys.argv)
 
-    if not client_name:
+    if not client_name or not client_passwd:
         start_dialog = UserNameDialog()
         client_app.exec_()
         # Если пользователь ввёл имя и нажал ОК, то сохраняем ведённое и удаляем объект, инааче выходим
         if start_dialog.ok_pressed:
             client_name = start_dialog.client_name.text()
+            client_passwd = start_dialog.client_passwd.text()
             del start_dialog
         else:
             exit(0)
@@ -61,10 +64,11 @@ if __name__ == '__main__':
 
     # Создаём объект - транспорт и запускаем транспортный поток
     try:
-        transport = ClientTransport(server_port, server_address, database, client_name)
+        transport = ClientTransport(server_port, server_address, database, client_name, client_passwd)
     except ServerError as error:
         print(error.text)
         exit(1)
+
     transport.setDaemon(True)
     transport.start()
 
