@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, MetaData, ForeignKey, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import datetime
@@ -15,11 +15,13 @@ class ServerStorage:
         name = Column(String, unique=True)
         last_login = Column(DateTime)
         passwd_hash = Column(String)
+        pubkey = Column(String)
 
         def __init__(self, username, passwd_hash):
             self.name = username
             self.last_login = datetime.datetime.now()
             self.passwd_hash = passwd_hash
+            self.pubkey = None
             self.id = None
 
         def __repr__(self):
@@ -116,13 +118,17 @@ class ServerStorage:
     # Функция выполняющаяся при входе пользователя. Если пользователь не зарегистрирован,
     # то он добавляется в таблицу Users.
     # Пользователь добавляется в таблицу Active_users и сохраняется история входов в таблице Login_history
-    def user_login(self, username, ip_address, port):
+    def user_login(self, username, ip_address, port, key):
         result = self.session.query(self.AllUsers).filter_by(name=username)
 
         # Если имя пользователя уже присутствует в таблице, обновляем время последнего входа
+        # и проверяем корректность ключа. Если клиент прислал новый ключ,
+        # сохраняем его.
         if result.count():
             user = result.first()
             user.last_login = datetime.datetime.now()
+            if user.pubkey != key:
+                user.pubkey = key
         # Если нет, то создаём нового пользователя
         else:
             raise ValueError('Пользователь не зарегистрирован.')
@@ -164,6 +170,11 @@ class ServerStorage:
         '''Метод получения хэша пароля пользователя.'''
         user = self.session.query(self.AllUsers).filter_by(name=name).first()
         return user.passwd_hash
+
+    def get_pubkey(self, name):
+        '''Метод получения публичного ключа пользователя.'''
+        user = self.session.query(self.AllUsers).filter_by(name=name).first()
+        return user.pubkey
 
     def check_user(self, name):
         '''Метод проверяющий существование пользователя.'''
@@ -266,34 +277,3 @@ class ServerStorage:
             join(self.AllUsers, self.UsersContacts.contact == self.AllUsers.id)
         return [contact[1] for contact in query.all()]
 
-
-if __name__ == '__main__':
-    test_db = ServerStorage('../server_base.db3')
-    # Выполняем "подключение" пользователя
-    test_db.user_login('client_1', '192.168.1.4', 8080)
-    test_db.user_login('client_2', '192.168.1.5', 7777)
-
-    # Выводим список кортежей - активных пользователей
-    print(' ---- test_db.active_users_list() ----')
-    print(test_db.active_users_list())
-
-    # Выводим список кортежей - всех пользователей
-    print(' ---- test_db.users_list() ----')
-    print(test_db.users_list())
-
-    # Выполняем "отключение" пользователя
-    test_db.user_logout('client_1')
-    # И выводим список активных пользователей
-    print(' ---- test_db.active_users_list() after logout client_1 ----')
-    print(test_db.active_users_list())
-
-    # Запрашиваем историю входов по пользователю
-    print(' ---- test_db.login_history(client_1) ----')
-    print(test_db.login_history('client_1'))
-
-    test_db.add_contact('test2', 'test1')
-    test_db.add_contact('test1', 'test3')
-    test_db.add_contact('test1', 'test6')
-    test_db.remove_contact('test1', 'test3')
-    test_db.process_message('client_1', 'client_2')
-    print(test_db.message_history())

@@ -23,6 +23,7 @@ ACCOUNT_NAME = 'account_name'
 SENDER = 'from'
 DESTINATION = 'to'
 DATA = 'bin'
+PUBLIC_KEY = 'pubkey'
 
 # Прочие ключи, используемые в протоколе
 PRESENCE = 'presence'
@@ -36,6 +37,7 @@ LIST_INFO = 'data_list'
 REMOVE_CONTACT = 'remove'
 ADD_CONTACT = 'add'
 USERS_REQUEST = 'get_users'
+PUBLIC_KEY_REQUEST = 'pubkey_need'
 
 # Словари - ответы:
 # 200

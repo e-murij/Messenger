@@ -21,16 +21,17 @@ socket_lock = threading.Lock()
 # Класс - Траннспорт, отвечает за взаимодействие с сервером
 class ClientTransport(threading.Thread, QObject):
     # Сигналы новое сообщение и потеря соединения
-    new_message = pyqtSignal(str)
+    new_message = pyqtSignal(dict)
     message_205 = pyqtSignal()
     connection_lost = pyqtSignal()
 
-    def __init__(self, port, ip_address, database, username, passwd):
+    def __init__(self, port, ip_address, database, username, passwd, keys):
         threading.Thread.__init__(self)
         QObject.__init__(self)
         self.database = database
         self.username = username
         self.password = passwd
+        self.keys = keys
         self.transport = None
         self.connection_init(port, ip_address)
         # Обновляем таблицы известных пользователей и контактов
@@ -81,11 +82,15 @@ class ClientTransport(threading.Thread, QObject):
         passwd_hash = hashlib.pbkdf2_hmac('sha512', passwd_bytes, salt, 10000)
         passwd_hash_string = binascii.hexlify(passwd_hash)
 
+        # Получаем публичный ключ и декодируем его из байтов
+        pubkey = self.keys.publickey().export_key().decode('ascii')
+
         # Посылаем серверу приветственное сообщение и получаем ответ что всё нормально или ловим исключение.
         try:
             with socket_lock:
-                send_message(self.transport, self.create_presence())
+                send_message(self.transport, self.create_presence(pubkey))
                 ans = get_message(self.transport)
+                CLIENT_LOGGER.debug(f'Server response = {ans}.')
                 if RESPONSE in ans:
                     if ans[RESPONSE] == 400:
                         raise ServerError(ans[ERROR])
@@ -106,7 +111,7 @@ class ClientTransport(threading.Thread, QObject):
         # Раз всё хорошо, сообщение о установке соединения.
         CLIENT_LOGGER.info('Соединение с сервером успешно установлено.')
 
-    def create_presence(self):
+    def create_presence(self, pubkey):
         """
         Функция генерирует запрос о присутствии клиента
         :return:
@@ -115,7 +120,8 @@ class ClientTransport(threading.Thread, QObject):
             ACTION: PRESENCE,
             TIME: time.time(),
             USER: {
-                ACCOUNT_NAME: self.username
+                ACCOUNT_NAME: self.username,
+                PUBLIC_KEY: pubkey
             }
         }
         CLIENT_LOGGER.debug(f'Сформировано {PRESENCE} сообщение для пользователя {self.username}')
@@ -146,8 +152,8 @@ class ClientTransport(threading.Thread, QObject):
         elif ACTION in message and message[ACTION] == MESSAGE and SENDER in message and DESTINATION in message \
                 and MESSAGE_TEXT in message and message[DESTINATION] == self.username:
             CLIENT_LOGGER.debug(f'Получено сообщение от пользователя {message[SENDER]}:{message[MESSAGE_TEXT]}')
-            self.database.save_message(message[SENDER], 'in', message[MESSAGE_TEXT])
-            self.new_message.emit(message[SENDER])
+            #self.database.save_message(message[SENDER], 'in', message[MESSAGE_TEXT])
+            self.new_message.emit(message)
 
     # Функция обновляющая контакт - лист с сервера
     def contacts_list_update(self):
@@ -184,6 +190,22 @@ class ClientTransport(threading.Thread, QObject):
             self.database.add_users(ans[LIST_INFO])
         else:
             CLIENT_LOGGER.error('Не удалось обновить список известных пользователей.')
+
+    def key_request(self, user):
+        '''Метод запрашивающий с сервера публичный ключ пользователя.'''
+        CLIENT_LOGGER.debug(f'Запрос публичного ключа для {user}')
+        req = {
+            ACTION: PUBLIC_KEY_REQUEST,
+            TIME: time.time(),
+            ACCOUNT_NAME: user
+        }
+        with socket_lock:
+            send_message(self.transport, req)
+            ans = get_message(self.transport)
+        if RESPONSE in ans and ans[RESPONSE] == 511:
+            return ans[DATA]
+        else:
+            CLIENT_LOGGER.error(f'Не удалось получить ключ собеседника{user}.')
 
     # Функция сообщающая на сервер о добавлении нового контакта
     def add_contact(self, contact):

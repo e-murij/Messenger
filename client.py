@@ -1,7 +1,10 @@
 import logging
+import os
+
 import log.client_log_config
 import argparse
 import sys
+from Cryptodome.PublicKey import RSA
 from PyQt5.QtWidgets import QApplication
 
 from common.variables import *
@@ -9,8 +12,7 @@ from common.errors import ServerError
 from common.decorators import Log
 from client.db_client import ClientStorage
 from client.transport import ClientTransport
-from client.main_window import ClientMainWindow
-from client.start_dialog import UserNameDialog
+from client.client_gui import ClientMainWindow, UserNameDialog
 
 
 CLIENT_LOGGER = logging.getLogger('client')
@@ -59,12 +61,25 @@ if __name__ == '__main__':
     CLIENT_LOGGER.info(
         f'Запущен клиент с парамертами: адрес сервера: {server_address} , порт: {server_port}, имя пользователя: {client_name}')
 
+    # Загружаем ключи с файла, если же файла нет, то генерируем новую пару.
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    key_file = os.path.join(dir_path, f'client\{client_name}.key')
+    if not os.path.exists(key_file):
+        keys = RSA.generate(2048, os.urandom)
+        with open(key_file, 'wb') as key:
+            key.write(keys.export_key())
+    else:
+        with open(key_file, 'rb') as key:
+            keys = RSA.import_key(key.read())
+
+    CLIENT_LOGGER.debug("Keys successfully loaded.")
+
     # Создаём объект базы данных
     database = ClientStorage(client_name)
 
     # Создаём объект - транспорт и запускаем транспортный поток
     try:
-        transport = ClientTransport(server_port, server_address, database, client_name, client_passwd)
+        transport = ClientTransport(server_port, server_address, database, client_name, client_passwd, keys)
     except ServerError as error:
         print(error.text)
         exit(1)
@@ -73,7 +88,7 @@ if __name__ == '__main__':
     transport.start()
 
     # Создаём GUI
-    main_window = ClientMainWindow(database, transport)
+    main_window = ClientMainWindow(database, transport, keys)
     main_window.make_connection(transport)
     main_window.setWindowTitle(f'Чат Программа alpha release - {client_name}')
     client_app.exec_()

@@ -54,12 +54,10 @@ class Server(threading.Thread, metaclass=ServerMaker):
                 self.clients.append(client)
 
             recv_data_lst = []
-            send_data_lst = []
-            err_lst = []
             # Проверяем на наличие ждущих клиентов
             try:
                 if self.clients:
-                    recv_data_lst, send_data_lst, err_lst = select.select(self.clients, self.clients, [], 0)
+                    recv_data_lst, self.listen_sockets, self.error_sockets = select.select(self.clients, self.clients, [], 0)
             except OSError as err:
                 self.SERVER_LOGGER.error(f'Ошибка работы с сокетами: {err}')
             # принимаем сообщения и если там есть сообщения,
@@ -69,7 +67,7 @@ class Server(threading.Thread, metaclass=ServerMaker):
                     try:
                         self.process_client_message(get_message(client_with_message), client_with_message)
                     except (OSError, json.JSONDecodeError, TypeError) as err:
-                        self.SERVER_LOGGER.debug(exc_info=err)
+                        self.SERVER_LOGGER.debug(err)
                         self.remove_client(client_with_message)
 
     def remove_client(self, client):
@@ -92,6 +90,7 @@ class Server(threading.Thread, metaclass=ServerMaker):
         проверяет корректность, отправляет словарь-ответ для клиента с результатом приёма.
         """
         self.SERVER_LOGGER.debug(f'Разбор сообщения от клиента : {message}')
+        print(self.names)
         # Если это сообщение о присутствии, принимаем и отвечаем, если успех
         if ACTION in message and message[ACTION] == PRESENCE and TIME in message and USER in message:
             # Если сообщение о присутствии то вызываем функцию авторизации.
@@ -101,7 +100,7 @@ class Server(threading.Thread, metaclass=ServerMaker):
                 and SENDER in message and MESSAGE_TEXT in message and self.names[message[SENDER]] == client:
             if message[DESTINATION] in self.names:
                 self.database.process_message(message[SENDER], message[DESTINATION])
-                self.process_message(message, client)
+                self.process_message(message)
                 try:
                     send_message(client, RESPONSE_200)
                 except OSError:
@@ -152,6 +151,24 @@ class Server(threading.Thread, metaclass=ServerMaker):
                 send_message(client, response)
             except OSError:
                 self.remove_client(client)
+        # Если это запрос публичного ключа пользователя
+        elif ACTION in message and message[ACTION] == PUBLIC_KEY_REQUEST and ACCOUNT_NAME in message:
+            response = RESPONSE_511
+            response[DATA] = self.database.get_pubkey(message[ACCOUNT_NAME])
+            # может быть, что ключа ещё нет (пользователь никогда не логинился,
+            # тогда шлём 400)
+            if response[DATA]:
+                try:
+                    send_message(client, response)
+                except OSError:
+                    self.remove_client(client)
+            else:
+                response = RESPONSE_400
+                response[ERROR] = 'Нет публичного ключа для данного пользователя'
+                try:
+                    send_message(client, response)
+                except OSError:
+                    self.remove_client(client)
         # Иначе отдаём Bad request
         else:
             response = RESPONSE_400
@@ -222,7 +239,8 @@ class Server(threading.Thread, metaclass=ServerMaker):
                 self.database.user_login(
                     message[USER][ACCOUNT_NAME],
                     client_ip,
-                    client_port
+                    client_port,
+                    message[USER][PUBLIC_KEY]
                 )
             else:
                 response = RESPONSE_400
@@ -234,12 +252,11 @@ class Server(threading.Thread, metaclass=ServerMaker):
                 self.clients.remove(sock)
                 sock.close()
 
-    def process_message(self, message, listen_socks):
+    def process_message(self, message):
         '''
         Метод отправки сообщения клиенту.
         '''
-        if message[DESTINATION] in self.names and self.names[message[DESTINATION]
-        ] in self.listen_sockets:
+        if message[DESTINATION] in self.names and self.names[message[DESTINATION]] in self.listen_sockets:
             try:
                 send_message(self.names[message[DESTINATION]], message)
                 self.SERVER_LOGGER.info(
