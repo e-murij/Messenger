@@ -1,17 +1,20 @@
-"""Утилиты"""
+"""Функции приема и передачи сообщений через сокеты"""
 
 import json
+import sys
 
-from common.variables import MAX_PACKAGE_LENGTH, ENCODING
+sys.path.append('../')
+
+from common.variables import *
+from common.decorators import Log
 
 
+@Log()
 def get_message(client):
-    '''
-    Утилита приёма и декодирования сообщения
-    принимает байты выдаёт словарь, если приняточто-то другое отдаёт ошибку значения
-    :param client:
-    :return:
-    '''
+    """ Утилита приёма и декодирования сообщения принимает байты выдаёт словарь,
+        если принято что-то другое отдаёт ошибку значения
+
+    """
 
     encoded_response = client.recv(MAX_PACKAGE_LENGTH)
     if isinstance(encoded_response, bytes):
@@ -23,14 +26,11 @@ def get_message(client):
     raise ValueError
 
 
+@Log()
 def send_message(sock, message):
-    '''
-    Утилита кодирования и отправки сообщения
-    принимает словарь и отправляет его
-    :param sock:
-    :param message:
-    :return:
-    '''
+    """  Функция отправки словарей через сокет. Кодирует словарь в формат JSON и отправляет через сокет
+
+    """
     if not isinstance(message, dict):
         raise TypeError
     js_message = json.dumps(message)

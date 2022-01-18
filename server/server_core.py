@@ -1,4 +1,7 @@
+""" Основной класс сервера. Принимает содинения, словари - пакеты от клиентов, обрабатывает поступающие сообщения.
+    Работает в качестве отдельного потока.
 
+"""
 import binascii
 import hmac
 import json
@@ -34,6 +37,9 @@ class Server(threading.Thread, metaclass=ServerMaker):
         super().__init__()
 
     def run(self):
+        """ Метод основной цикл потока.
+
+        """
         self.transport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.transport.bind((self.listen_address, self.listen_port))
         self.transport.settimeout(0.5)
@@ -57,7 +63,8 @@ class Server(threading.Thread, metaclass=ServerMaker):
             # Проверяем на наличие ждущих клиентов
             try:
                 if self.clients:
-                    recv_data_lst, self.listen_sockets, self.error_sockets = select.select(self.clients, self.clients, [], 0)
+                    recv_data_lst, self.listen_sockets, self.error_sockets = select.select(self.clients, self.clients,
+                                                                                           [], 0)
             except OSError as err:
                 self.SERVER_LOGGER.error(f'Ошибка работы с сокетами: {err}')
             # принимаем сообщения и если там есть сообщения,
@@ -71,10 +78,9 @@ class Server(threading.Thread, metaclass=ServerMaker):
                         self.remove_client(client_with_message)
 
     def remove_client(self, client):
-        '''
-        Метод обработчик клиента с которым прервана связь.
-        Ищет клиента и удаляет его из списков и базы:
-        '''
+        """ Метод обработчик клиента с которым прервана связь. Ищет клиента и удаляет его из списков и базы
+
+        """
         self.SERVER_LOGGER.info(f'Клиент {client.getpeername()} отключился от сервера.')
         for name in self.names:
             if self.names[name] == client:
@@ -85,17 +91,15 @@ class Server(threading.Thread, metaclass=ServerMaker):
         client.close()
 
     def process_client_message(self, message, client):
-        """
-        Обработчик сообщений от клиентов, принимает словарь - сообщение от клинта,
-        проверяет корректность, отправляет словарь-ответ для клиента с результатом приёма.
+        """ Метод отбработчик поступающих сообщений.
+
         """
         self.SERVER_LOGGER.debug(f'Разбор сообщения от клиента : {message}')
-        print(self.names)
         # Если это сообщение о присутствии, принимаем и отвечаем, если успех
         if ACTION in message and message[ACTION] == PRESENCE and TIME in message and USER in message:
             # Если сообщение о присутствии то вызываем функцию авторизации.
             self.autorize_user(message, client)
-        # Если это сообщение, то добавляем его в очередь сообщений. Ответ не требуется.
+        # Если это сообщение, то отправляем его получателю
         elif ACTION in message and message[ACTION] == MESSAGE and DESTINATION in message and TIME in message \
                 and SENDER in message and MESSAGE_TEXT in message and self.names[message[SENDER]] == client:
             if message[DESTINATION] in self.names:
@@ -179,7 +183,9 @@ class Server(threading.Thread, metaclass=ServerMaker):
                 self.remove_client(client)
 
     def autorize_user(self, message, sock):
-        """ Метод реализующий авторизацию пользователей. """
+        """ Метод реализующий авторизацию пользователей.
+
+        """
         # Если имя пользователя уже занято то возвращаем 400
         self.SERVER_LOGGER.debug(f'Авторизация пользователя {message[USER]}')
         if message[USER][ACCOUNT_NAME] in self.names.keys():
@@ -253,11 +259,12 @@ class Server(threading.Thread, metaclass=ServerMaker):
                 sock.close()
 
     def process_message(self, message):
-        '''
-        Метод отправки сообщения клиенту.
-        '''
+        """ Метод отправки сообщения клиенту.
+
+        """
         if message[DESTINATION] in self.names and self.names[message[DESTINATION]] in self.listen_sockets:
             try:
+                print('1')
                 send_message(self.names[message[DESTINATION]], message)
                 self.SERVER_LOGGER.info(
                     f'Отправлено сообщение пользователю {message[DESTINATION]} от пользователя {message[SENDER]}.')
@@ -272,10 +279,11 @@ class Server(threading.Thread, metaclass=ServerMaker):
                 f'Пользователь {message[DESTINATION]} не зарегистрирован на сервере, отправка сообщения невозможна.')
 
     def service_update_lists(self):
-        '''Метод реализующий отправки сервисного сообщения 205 клиентам.'''
+        """ Метод реализующий отправки сервисного сообщения 205 клиентам.
+
+        """
         for client in self.names:
             try:
                 send_message(self.names[client], RESPONSE_205)
             except OSError:
                 self.remove_client(self.names[client])
-

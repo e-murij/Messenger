@@ -1,3 +1,4 @@
+"""Графическая оболочка для сервера"""
 import binascii
 import hashlib
 import os
@@ -8,8 +9,11 @@ from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import Qt, QTimer
 
 
-# Класс основного окна
 class MainWindow(QMainWindow):
+    """ Класс - основное окно сервера.
+
+    """
+
     def __init__(self, database, server, config):
         super().__init__()
         self.database = database
@@ -80,7 +84,9 @@ class MainWindow(QMainWindow):
         self.show()
 
     def create_users_model(self):
-        '''Метод заполняющий таблицу активных пользователей.'''
+        """ Метод заполняющий таблицу активных пользователей.
+
+        """
         list_users = self.database.active_users_list()
         list = QStandardItemModel()
         list.setHorizontalHeaderLabels(
@@ -103,25 +109,33 @@ class MainWindow(QMainWindow):
         self.active_clients_table.resizeRowsToContents()
 
     def show_statistics(self):
-        '''Метод создающий окно с историей клиентов.'''
+        """ Метод создающий окно с историей клиентов.
+
+        """
         global stat_window
         stat_window = HistoryWindow(self.database)
         stat_window.show()
 
     def server_config(self):
-        '''Метод создающий окно с настройками сервера.'''
+        """ Метод создающий окно с настройками сервера.
+
+        """
         global config_window
         # Создаём окно и заносим в него текущие параметры
         config_window = ConfigWindow(self.config)
 
     def reg_user(self):
-        '''Метод создающий окно регистрации пользователя.'''
+        """ Метод создающий окно регистрации пользователя.
+
+        """
         global reg_window
         reg_window = RegisterUser(self.database, self.server_thread)
         reg_window.show()
 
     def rem_user(self):
-        '''Метод создающий окно удаления пользователя.'''
+        """ Метод создающий окно удаления пользователя.
+
+        """
         global rem_window
         rem_window = DelUserDialog(self.database, self.server_thread)
         rem_window.show()
@@ -129,6 +143,10 @@ class MainWindow(QMainWindow):
 
 # Класс окна с историей пользователей
 class HistoryWindow(QDialog):
+    """ Класс - окно с историей пользователей
+
+    """
+
     def __init__(self, database):
         super().__init__()
         self.database = database
@@ -153,7 +171,9 @@ class HistoryWindow(QDialog):
         self.create_stat_model()
 
     def create_stat_model(self):
-        '''Метод реализующий заполнение таблицы статистикой сообщений.'''
+        """М етод реализующий заполнение таблицы статистикой сообщений.
+
+        """
         # Список записей из базы
         stat_list = self.database.message_history()
 
@@ -177,8 +197,11 @@ class HistoryWindow(QDialog):
         self.history_table.resizeRowsToContents()
 
 
-# Класс окна настроек
 class ConfigWindow(QDialog):
+    """ Класс окно настроек.
+
+    """
+
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -206,8 +229,10 @@ class ConfigWindow(QDialog):
         self.db_path_select = QPushButton('Обзор...', self)
         self.db_path_select.move(275, 28)
 
-        # Функция обработчик открытия окна выбора папки
         def open_file_dialog():
+            """ Метод обработчик открытия окна выбора папки.
+
+            """
             global dialog
             dialog = QFileDialog(self)
             path = dialog.getExistingDirectory()
@@ -269,11 +294,9 @@ class ConfigWindow(QDialog):
         self.save_btn.clicked.connect(self.save_server_config)
 
     def save_server_config(self):
-        '''
-        Метод сохранения настроек.
-        Проверяет правильность введённых данных и
-        если всё правильно сохраняет ini файл.
-        '''
+        """ Метод сохранения настроек. Проверяет правильность введённых данных и если всё правильно сохраняет ini файл.
+
+        """
         global config_window
         message = QMessageBox()
         self.config['SETTINGS']['Database_path'] = self.db_path.text()
@@ -297,8 +320,11 @@ class ConfigWindow(QDialog):
                     self, 'Ошибка', 'Порт должен быть от 1024 до 65536')
 
 
-# Класс регистрации пользователя на сервере.
 class RegisterUser(QDialog):
+    """ Класс диалог регистрации пользователя на сервере.
+
+    """
+
     def __init__(self, database, server):
         super().__init__()
         self.database = database
@@ -346,8 +372,8 @@ class RegisterUser(QDialog):
         self.show()
 
     def save_data(self):
-        """
-        Метод проверки правильности ввода и сохранения в базу нового пользователя.
+        """ Метод проверки правильности ввода и сохранения в базу нового пользователя.
+
         """
         if not self.client_name.text():
             self.messages.critical(
@@ -378,8 +404,11 @@ class RegisterUser(QDialog):
             self.close()
 
 
-# Удаление пользователя с сервера
 class DelUserDialog(QDialog):
+    """ Класс - диалог выбора контакта для удаления.
+
+    """
+
     def __init__(self, database, server):
         super().__init__()
         self.database = database
@@ -412,12 +441,16 @@ class DelUserDialog(QDialog):
         self.all_users_fill()
 
     def all_users_fill(self):
-        '''Метод заполняющий список пользователей.'''
+        """ Метод заполняющий список пользователей.
+
+        """
         self.selector.addItems([item[0]
                                 for item in self.database.users_list()])
 
     def remove_user(self):
-        '''Метод - обработчик удаления пользователя.'''
+        """ Метод - обработчик удаления пользователя.
+
+        """
         self.database.remove_user(self.selector.currentText())
         if self.selector.currentText() in self.server.names:
             sock = self.server.names[self.selector.currentText()]
@@ -426,38 +459,3 @@ class DelUserDialog(QDialog):
         # Рассылаем клиентам сообщение о необходимости обновить справочники
         self.server.service_update_lists()
         self.close()
-
-
-if __name__ == '__main__':
-    # Основное окно
-    # app = QApplication(sys.argv)
-    # main_window = MainWindow()
-    # main_window.statusBar().showMessage('Test Statusbar Message')
-    # test_list = QStandardItemModel(main_window)
-    # test_list.setHorizontalHeaderLabels(['Имя Клиента', 'IP Адрес', 'Порт', 'Время подключения'])
-    # test_list.appendRow(
-    #     [QStandardItem('test1'), QStandardItem('192.198.0.5'), QStandardItem('23544'), QStandardItem('16:20:34')])
-    # test_list.appendRow(
-    #     [QStandardItem('test2'), QStandardItem('192.198.0.8'), QStandardItem('33245'), QStandardItem('16:22:11')])
-    # main_window.active_clients_table.setModel(test_list)
-    # main_window.active_clients_table.resizeColumnsToContents()
-    # app.exec_()
-
-    # Окно настроек
-    # app = QApplication(sys.argv)
-    # window = ConfigWindow()
-    # app.exec_()
-
-    # Окно истории пользователей
-    app = QApplication(sys.argv)
-    window = HistoryWindow()
-    test_list = QStandardItemModel(window)
-    test_list.setHorizontalHeaderLabels(
-        ['Имя Клиента', 'Последний раз входил', 'Отправлено', 'Получено'])
-    test_list.appendRow(
-        [QStandardItem('test1'), QStandardItem('Fri Dec 12 16:20:34 2020'), QStandardItem('2'), QStandardItem('3')])
-    test_list.appendRow(
-        [QStandardItem('test2'), QStandardItem('Fri Dec 12 16:23:12 2020'), QStandardItem('8'), QStandardItem('5')])
-    window.history_table.setModel(test_list)
-    window.history_table.resizeColumnsToContents()
-    app.exec_()

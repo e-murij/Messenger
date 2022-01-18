@@ -1,3 +1,4 @@
+""" Основной модуль сервера"""
 import sys
 import os
 import argparse
@@ -8,7 +9,7 @@ import log.server_log_config
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
 from common.variables import *
-# from common.decorators import Log
+from common.decorators import Log
 from server.server_core import Server
 from server.db_server import ServerStorage
 from server.server_gui import MainWindow
@@ -18,8 +19,11 @@ from server.server_gui import MainWindow
 logger = logging.getLogger('server')
 
 
+@Log()
 def arg_parser(default_port, default_address):
-    """Парсер аргументов коммандной строки."""
+    """ Парсер аргументов коммандной строки.
+
+    """
     logger.debug(
         f'Инициализация парсера аргументов коммандной строки: {sys.argv}')
     parser = argparse.ArgumentParser()
@@ -33,7 +37,9 @@ def arg_parser(default_port, default_address):
 
 
 def config_load():
-    """Парсер конфигурационного ini файла."""
+    """ Парсер конфигурационного ini файла.
+
+    """
     config = configparser.ConfigParser()
     dir_path = os.path.dirname(os.path.realpath(__file__))
     config.read(f"{dir_path}/{'server.ini'}")
@@ -48,6 +54,7 @@ def config_load():
         return config
 
 
+@Log()
 def main():
     # Загрузка файла конфигурации сервера
     config = config_load()

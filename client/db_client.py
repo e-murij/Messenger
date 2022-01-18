@@ -1,18 +1,22 @@
 import os
-import sys
+import datetime
 
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-import datetime
 
 
-# Класс - клиентская база данных.
-class ClientStorage():
+class ClientStorage:
+    """ Класс - оболочка для работы с базой данных клиента. Использует SQLite базу данных, реализован с помощью
+        SQLAlchemy ORM и используется декларативный подход.
+
+    """
     Base = declarative_base()
 
-    # Таблица всех известных пользователей
     class KnownUsers(Base):
+        """ Класс таблица всех известных пользователей
+
+        """
         __tablename__ = 'known_users'
         id = Column(Integer, primary_key=True)
         username = Column(String)
@@ -24,8 +28,10 @@ class ClientStorage():
         def __repr__(self):
             return f'<User({self.id}, {self.username})>'
 
-    # Таблица истории сообщений
     class MessageHistory(Base):
+        """ Класс таблица статистики сообщений
+
+        """
         __tablename__ = 'message_history'
         id = Column(Integer, primary_key=True)
         from_user = Column(String)
@@ -43,8 +49,10 @@ class ClientStorage():
         def __repr__(self):
             return f'<User({self.id}, {self.from_user}, {self.to_user}, {self.message}, {self.date})>'
 
-    # Таблица список контактов
     class Contacts(Base):
+        """ Класс таблица контактов
+
+        """
         __tablename__ = 'contacts'
         id = Column(Integer, primary_key=True)
         name = Column(String, unique=True)
@@ -71,64 +79,87 @@ class ClientStorage():
         self.session.query(self.Contacts).delete()
         self.session.commit()
 
-    # Функция добавления контактов
     def add_contact(self, contact):
+        """ Метод добавляющий контакт в базу данных.
+
+        """
         if not self.session.query(self.Contacts).filter_by(name=contact).count():
             contact_row = self.Contacts(contact)
             self.session.add(contact_row)
             self.session.commit()
 
-    # Функция удаления контакта
+    def contacts_clear(self):
+        """ Метод, очищающий таблицу со списком контактов. """
+        self.session.query(self.Contacts).delete()
+        self.session.commit()
+
     def del_contact(self, contact):
+        """ Метод удаляющий определённый контакт.
+
+        """
         self.session.query(self.Contacts).filter_by(name=contact).delete()
         self.session.commit()
 
-    # Функция добавления известных пользователей.
-    # Пользователи получаются только с сервера, поэтому таблица очищается.
     def add_users(self, users_list):
+        """ Функция добавления известных пользователей. Пользователи получаются только с сервера,
+            поэтому таблица очищается.
+
+        """
         self.session.query(self.KnownUsers).delete()
         for user in users_list:
             user_row = self.KnownUsers(user)
             self.session.add(user_row)
         self.session.commit()
 
-    # Функция сохраняет сообщения
     def save_message(self, from_user, to_user, message):
+        """ Метод сохраняющий сообщение в базе данных.
+
+        """
         message_row = self.MessageHistory(from_user, to_user, message)
         self.session.add(message_row)
         self.session.commit()
 
-    # Функция возвращает контакты
     def get_contacts(self):
+        """ Метод возвращающий список всех контактов.
+
+        """
         return [contact[0] for contact in self.session.query(self.Contacts.name).all()]
 
-    # Функция возвращает список известных пользователей
     def get_users(self):
+        """ Метод возвращающий список всех известных пользователей.
+
+        """
         return [user[0] for user in self.session.query(self.KnownUsers.username).all()]
 
-    # Функция проверяет наличие пользователя в таблице Известных Пользователей
     def check_user(self, user):
+        """ Метод проверяющий существует ли пользователь.
+
+        """
         if self.session.query(self.KnownUsers).filter_by(username=user).count():
             return True
         else:
             return False
 
-    # Функция проверяет наличие пользователя в таблице Контактов
     def check_contact(self, contact):
+        """ Метод проверяющий существует ли контакт.
+
+        """
         if self.session.query(self.Contacts).filter_by(name=contact).count():
             return True
         else:
             return False
 
-    # Функция возвращает историю переписки
-    def get_history(self, from_who=None, to_who=None):
-        query = self.session.query(self.MessageHistory)
-        if from_who:
-            query = query.filter_by(from_user=from_who)
-        if to_who:
-            query = query.filter_by(to_user=to_who)
-        return [(history_row.from_user, history_row.to_user, history_row.message, history_row.date)
-                for history_row in query.all()]
+    def get_history(self, contact):
+        """ Метод, возвращающий историю сообщений с определённым пользователем.
+
+        """
+        query = self.session.query(
+            self.MessageHistory).filter_by(
+            from_user=contact)
+        return [(history_row.from_user,
+                 history_row.to_user,
+                 history_row.message,
+                 history_row.date) for history_row in query.all()]
 
 
 if __name__ == '__main__':
