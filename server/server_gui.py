@@ -141,7 +141,6 @@ class MainWindow(QMainWindow):
         rem_window.show()
 
 
-# Класс окна с историей пользователей
 class HistoryWindow(QDialog):
     """ Класс - окно с историей пользователей
 
