@@ -344,13 +344,17 @@ class ClientMainWindow(QMainWindow):
             return
         # Сохраняем сообщение в базу и обновляем историю сообщений или
         # открываем новый чат.
-        self.database.save_message(
-            self.current_chat,
-            'in',
-            decrypted_message.decode('utf8'))
+        # self.database.save_message(
+        #     self.current_chat,
+        #     'in',
+        #     decrypted_message.decode('utf8'))
 
         sender = message[SENDER]
         if sender == self.current_chat:
+            self.database.save_message(
+                self.current_chat,
+                'in',
+                decrypted_message.decode('utf8'))
             self.history_list_update()
         else:
             # Проверим есть ли такой пользователь у нас в контактах:
@@ -364,6 +368,10 @@ class ClientMainWindow(QMainWindow):
                     QMessageBox.Yes,
                         QMessageBox.No) == QMessageBox.Yes:
                     self.current_chat = sender
+                    self.database.save_message(
+                        self.current_chat,
+                        'in',
+                        decrypted_message.decode('utf8'))
                     self.set_active_user()
             else:
                 print('NO')
