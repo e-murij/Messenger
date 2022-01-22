@@ -6,13 +6,12 @@ import sys
 import socket
 import threading
 import time
+import json
+import log.client_log_config
 from PyQt5.QtCore import pyqtSignal, QObject
-
-sys.path.append('../')
-
-from common.utils import *
-from common.variables import *
 from common.errors import ServerError
+from common.variables import *
+from common.utils import *
 
 
 # Логер и объект блокировки для работы с сокетом.
@@ -109,8 +108,8 @@ class ClientTransport(threading.Thread, QObject):
                     my_ans[DATA] = binascii.b2a_base64(digest).decode('ascii')
                     send_message(self.transport, my_ans)
                     self.process_server_ans(get_message(self.transport))
-        except (OSError, json.JSONDecodeError):
-            CLIENT_LOGGER.critical('Потеряно соединение с сервером!')
+        except (OSError, json.JSONDecodeError) as err:
+            CLIENT_LOGGER.critical(f'Потеряно соединение с сервером! {err}')
             raise ServerError('Потеряно соединение с сервером!')
 
         # Раз всё хорошо, сообщение о установке соединения.

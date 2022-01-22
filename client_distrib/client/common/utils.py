@@ -3,10 +3,8 @@
 import json
 import sys
 
-sys.path.append('../')
-
-from common.variables import *
 from common.decorators import Log
+from common.variables import *
 
 
 @Log()

@@ -1,18 +1,17 @@
 """ Основной модуль клиента"""
-import logging
 import os
-import log.client_log_config
 import argparse
 import sys
+import logging
 from Cryptodome.PublicKey import RSA
 from PyQt5.QtWidgets import QApplication, QMessageBox
-
-from common.variables import *
+import log.client_log_config
 from common.errors import ServerError
 from common.decorators import Log
 from client.db_client import ClientStorage
 from client.transport import ClientTransport
 from client.client_gui import ClientMainWindow, UserNameDialog
+from common.variables import *
 
 CLIENT_LOGGER = logging.getLogger('client')
 

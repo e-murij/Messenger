@@ -160,22 +160,3 @@ class ClientStorage:
                  history_row.to_user,
                  history_row.message,
                  history_row.date) for history_row in query.all()]
-
-
-if __name__ == '__main__':
-    test_db = ClientStorage('test1')
-    for i in ['test3', 'test4', 'test5']:
-        test_db.add_contact(i)
-    test_db.add_contact('test4')
-    test_db.add_users(['test1', 'test2', 'test3', 'test4', 'test5'])
-    test_db.save_message('test1', 'test2', f'Привет! я тестовое сообщение от {datetime.datetime.now()}!')
-    test_db.save_message('test2', 'test1', f'Привет! я другое тестовое сообщение от {datetime.datetime.now()}!')
-    print(test_db.get_contacts())
-    print(test_db.get_users())
-    print(test_db.check_user('test1'))
-    print(test_db.check_user('test10'))
-    print(test_db.get_history('test2'))
-    print(test_db.get_history(to_who='test2'))
-    print(test_db.get_history('test3'))
-    test_db.del_contact('test4')
-    print(test_db.get_contacts())

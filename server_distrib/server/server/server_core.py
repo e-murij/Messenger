@@ -8,12 +8,13 @@ import json
 import os
 import select
 import socket
+import sys
 import threading
-
-from common.variables import *
+import logging
 from common.utils import get_message, send_message
 from common.descriptors import Port
 from common.metaclasses import ServerMaker
+from common.variables import *
 
 
 class Server(threading.Thread, metaclass=ServerMaker):

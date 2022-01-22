@@ -10,8 +10,6 @@ from PyQt5.QtCore import pyqtSlot, Qt
 from Cryptodome.Cipher import PKCS1_OAEP
 from Cryptodome.PublicKey import RSA
 
-sys.path.append('../')
-
 from common.variables import MESSAGE_TEXT, SENDER
 from client.main_window_conv import Ui_MainClientWindow
 from common.errors import ServerError
