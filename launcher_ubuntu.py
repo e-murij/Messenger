@@ -25,7 +25,7 @@ process = []
 
 if __name__ == "__main__":
     while True:
-        TEXT_FOR_INPUT = "Выберите действие: q - выход, s - запустить сервер и клиенты, x - закрыть все окна: "
+        TEXT_FOR_INPUT = "Выберите действие: q - выход, s - запустить сервер, c - запустить клиенты, x - закрыть все окна: "
         action = input(TEXT_FOR_INPUT)
 
         if action == "q":
@@ -33,8 +33,9 @@ if __name__ == "__main__":
         elif action == "s":
             process.append(get_subprocess("server.py"))
 
+        elif action == "c":
             for i in range(2):
-                process.append(get_subprocess(f"client.py -n test{i+1}"))
+                process.append(get_subprocess(f"client.py -n user_{i+1} -p 123456"))
 
         elif action == "x":
             while process:
