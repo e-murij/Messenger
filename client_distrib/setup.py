@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name="py_messenger_client",
-      version="0.1.1",
+      version="0.1.2",
       description="messenger client",
       author="Murij Kate",
       author_email="murij.kat@gmail.com",
